@@ -1,2 +1,3 @@
 # Compressor-GO
-A Compression tool
+
+A Compression tool using Huffman Encoding/Decoding
