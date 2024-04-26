@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+
+	huffman "example.com/Compressor/Huffman"
 )
 
 func main() {
@@ -20,12 +22,16 @@ func main() {
 	fmt.Println(len(f))
 
 	// MAP TO KEEP A COUNT OF THE CHARACTERS
-	charCount := make(map[string]int64)
+	charCount := make(map[rune]int)
 
 	for _,c := range f{
-		charCount[string(c)]++
+		charCount[rune(c)]++
 	}
 
 	fmt.Println(charCount)
+
+	sampleTree := huffman.BuildTree(charCount)
+
+	huffman.PrintCodes(sampleTree, []byte{})
 
 }
