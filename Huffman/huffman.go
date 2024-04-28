@@ -2,7 +2,6 @@ package huffman
 
 import (
 	"container/heap"
-	"fmt"
 )
 
 // INTERFACE FOR THE TREE
@@ -19,7 +18,7 @@ type HuffmanLeaf struct{
 // INTERNAL NODES WITH ONLY THE SUM OF CHILD FREQ
 type HuffmanNode struct{
 	freq int
-	leftChild, rightChild HuffmanTree
+	left_child, right_child HuffmanTree
 }
 
 // FUNCTIONS TO RETURN THE FREQUENCY OF EACH NODE
@@ -34,28 +33,28 @@ func (self HuffmanNode) Freq() int{
 
 
 // CREATING A HEAP TO TRACK THE MINIMUM ELEMENTS
-type treeHeap []HuffmanTree
+type TreeHeap []HuffmanTree
 
 // IMPLEMENTING THE HEAP FUNCTIONS
-func (h treeHeap)Len() int{
+func (h TreeHeap)Len() int{
 	return len(h)
 }
 
-func (h treeHeap)Swap(i,j int){
+func (h TreeHeap)Swap(i,j int){
 	h[i],h[j] = h[j],h[i]
 }
 
-func (h treeHeap)Less(i,j int) bool {
+func (h TreeHeap)Less(i,j int) bool {
 	return h[i].Freq() < h[j].Freq()
 }
 
 // PUSH AN ELEMENT INTO THE HEAP
-func (h *treeHeap)Push(element interface{}) {
+func (h *TreeHeap)Push(element interface{}) {
 	*h = append(*h, element.(HuffmanTree))
 }
 
 // POP RETURNS THE MINIMUM ELEMENT FROM THE HEAP
-func (h *treeHeap)Pop()(element interface{}){
+func (h *TreeHeap)Pop()(element interface{}){
 	element = (*h)[len(*h)-1]
 	*h = (*h)[:len(*h)-1]
 	return 
@@ -63,7 +62,7 @@ func (h *treeHeap)Pop()(element interface{}){
 
 func BuildTree(charMap map[rune]int) HuffmanTree{
 	
-	var trees treeHeap
+	var trees TreeHeap
 	for char,freq := range charMap{
 		trees = append(trees, HuffmanLeaf{char,freq})	
 	}
@@ -82,22 +81,24 @@ func BuildTree(charMap map[rune]int) HuffmanTree{
 	return heap.Pop(&trees).(HuffmanTree)
 }
 
-func PrintCodes(tree HuffmanTree, prefix []byte){
+func GenerateCodes(tree HuffmanTree, prefix []byte, encoder map[rune]string) map[rune]string{
+
 	switch i := tree.(type){
-		// LEAF ONLY CONTAINS THE VALUE AND CHARACTER, SO WE PRINT THEM OUT
+		// LEAF ONLY CONTAINS THE VALUE AND CHARACTER, SO WE RETURN THEM
 		// WITH THE PREFIX CODE
 	case HuffmanLeaf:
-		fmt.Printf("%d\t%d\t%s\n",i.freq,i.character,string(prefix))
+		encoder[i.character] = string(prefix)
 
 	case HuffmanNode:
 		// ASSIGN '0' WHILE TRAVERSING THE LEFT SUB TREE
 		prefix = append(prefix, '0')
-		PrintCodes(i.leftChild, prefix) // CALL THE PRINT FUNCTION ON THE LEFT SUB TREE
+		GenerateCodes(i.left_child, prefix, encoder) // RECURSIVE CALL ON THE LEFT SUB TREE
 		prefix = prefix[:len(prefix)-1] // REMOVE THE LAST EXTRA BYTE
 
 		// ASSIGN '1' WHILE TRAVERSING THE LEFT SUB TREE
 		prefix = append(prefix, '1')
-		PrintCodes(i.rightChild, prefix) // CALL THE PRINT FUNCTION ON THE LEFT SUB TREE
+		GenerateCodes(i.right_child, prefix, encoder) // RECURSIVE CALL ON THE RIGHT SUB TREE
 		prefix = prefix[:len(prefix)-1] // REMOVE THE LAST EXTRA BYTE
 	}
+	return encoder
 }
