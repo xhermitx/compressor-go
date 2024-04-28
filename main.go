@@ -64,15 +64,12 @@ func main() {
 
 	// CREATE AN ENCODER MAP OF CHARACTER:BIT_STRING
 	encoder_map := huffman.GenerateCodes(sample_tree, []byte{}, make(map[rune]string))
-	
-	// CREATING A HEADER FOR THE OUTPUT FILE
 
+	// ENCODE THE FILE CONTENTS
 	encoded_bits := encoder(f, encoder_map)
-
 	byte_array := bit_to_byte(encoded_bits)
 
+	// COMPARING THE FILE SIZE BEFORE AND AFTER ENCODING
 	fmt.Println("\n\nOriginal File length: ",len(f))
 	fmt.Println("Byte encoded File length: ",len(byte_array))
-	// header_text :=
-
 }
