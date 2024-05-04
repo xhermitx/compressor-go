@@ -78,7 +78,13 @@ func Decode(inputFile string, outputFile string, encoderMap map[rune]string){
 	t := 0
     // Read the file byte by byte
 	for _,b := range contents{
-		
+		for t<15{
+			if b == end[t]{
+				t++
+			}else{
+				t=0
+			}
+		}
 		
 		bitStream.WriteString(fmt.Sprintf("%08b",b))
 		
