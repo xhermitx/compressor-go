@@ -1,71 +1,26 @@
 package fileIO
 
 import (
+	"bufio"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
-	"strconv"
+	"strings"
 )
 
-const CHUNK_SIZE = 20000
+const HEADER_CONTENT_SEPARATOR = "\nEND OF HEADER\n"
 
-func Encoder(fileContent []byte,encoderMap map[rune]string, charCount map[rune]int, fileName string) {
-
-	// CALCULATE THE LENGTH OF THE ENCODED BIT STRING
-	totalLength := 0
-	for key, val := range encoderMap {
-		totalLength += charCount[key] * len(val)
+func ReadFromFile(inputFile string) []byte{
+	res,err := os.ReadFile(inputFile)
+	if err!=nil{
+		log.Fatal(err)
 	}
-
-	fmt.Println("Calculated length of the encoded bits : ", totalLength)
-
-	encodedBits := ""
-	extra := 0
-	carryBits := ""
-
-	for _,b := range fileContent{
-		if extra > 0{
-			encodedBits+=carryBits
-			carryBits = ""
-			extra = 0
-		}
-		encodedBits += encoderMap[rune(b)]
-
-		if len(encodedBits) >= CHUNK_SIZE {
-			extra = len(encodedBits)%CHUNK_SIZE
-			carryBits = encodedBits[len(encodedBits)-extra:]
-			encodedBits = encodedBits[:len(encodedBits)-extra]
-			bitToByte(encodedBits, fileName)
-			encodedBits = ""
-		}
-	}
-
-	// fmt.Println("Total length of the encoded bits : ",len(encodedBits)+sum)
-	bitToByte(encodedBits, fileName)
-}
-
-// CONVERTS THE ENCODED STRING OF BITS INTO A BYTE ARRAY TO WRITE TO A FILE
-func bitToByte(bitString string, fileName string){
-
-	var res []byte
-	// CALCULATING THE PADDING BITS
-	if len(bitString)%8 !=0{
-		padding := 8-(len(bitString)%8)
-		for i:=0;i<padding;i++{
-			bitString += "0"
-		}
-	}
-
-	for i:=0;i<len(bitString);i+=8{
-		b,_ := strconv.ParseUint(bitString[i:i+8], 2, 8)
-		res = append(res, byte(b))
-	}
-
-	writeToFile(res, fileName)
+	return res
 }
 
 // FUNCTION TO CREATE A FILE AND WRITE TO IT
-func writeToFile(fileContent []byte, fileName string){
+func WriteToFile(fileContent interface{}, fileName string){
 
 	f,err := os.OpenFile(fileName,os.O_APPEND|os.O_CREATE|os.O_WRONLY,0644)
 	if err!=nil{
@@ -73,8 +28,70 @@ func writeToFile(fileContent []byte, fileName string){
 	}
 	defer f.Close()
 
-	_,err2 := f.WriteString(string(fileContent))
+	var data string
+
+	switch v:= fileContent.(type){
+	case string: data = v
+	case []byte: data = string(v)
+	default: 
+		fmt.Println("content must be of type []byte or string")
+	}
+	_,err2 := f.WriteString(data)
 	if err!=nil{
 		log.Fatal(err2)
 	}
+}
+
+func WriteHeader(fileName string,encoderMap map[rune]string){
+	mapForJSON := make(map[rune]string)
+
+	for k,v := range encoderMap{
+		mapForJSON[k] = v
+	}
+
+	jsonData,err := json.Marshal(mapForJSON)
+	if err != nil{
+		log.Fatal(err)
+	}
+
+	err2 := os.WriteFile(fileName, jsonData, 0644)
+	if err2 != nil{
+		log.Fatal(err2)
+	}
+
+	WriteToFile(HEADER_CONTENT_SEPARATOR, fileName)
+}
+
+func ReadHeader(fileName string) map[rune]string{
+	f, err := os.Open(fileName)	
+	if err!=nil{
+		log.Fatal(err)
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+
+	var headerBuilder strings.Builder
+
+	for scanner.Scan() {
+        line := scanner.Text()
+
+        // Check for the header separator line
+        if line == "END OF HEADER" {
+            break
+        }
+
+        // Write the line to the header string builder
+        headerBuilder.WriteString(line)
+    }
+
+	headerJSON := headerBuilder.String()
+
+    // Unmarshal the JSON header into a map (or a struct depending on your header structure)
+    var headerMap map[rune]string // Using a map as an example
+    err = json.Unmarshal([]byte(headerJSON), &headerMap)
+    if err != nil {
+        fmt.Println("Error unmarshalling JSON header:", err)
+    }
+	return headerMap
 }
