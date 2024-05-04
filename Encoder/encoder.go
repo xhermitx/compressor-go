@@ -1,7 +1,10 @@
 package encoder
 
 import (
+	"bufio"
 	"fmt"
+	"io"
+	"os"
 	"strconv"
 	"strings"
 
@@ -70,35 +73,75 @@ func Decode(inputFile string, outputFile string, encoderMap map[rune]string){
 		fmt.Println(v,string(k))
 	}
 
-	contents := fileIO.ReadFromFile(inputFile)
+	file, err := os.Open(inputFile)
+    if err != nil {
+        fmt.Println("Error opening file:", err)
+        return
+    }
+    defer file.Close()
+
+    reader := bufio.NewReader(file)
+    var line string
+
+    // Read line by line until the header is found
+    for {
+        line, err = reader.ReadString('\n')
+        if err != nil {
+            fmt.Println("Error reading file:", err)
+            return
+        }
+
+        // Check if the line is the end of the header
+        if strings.Contains(line, "END OF HEADER") {
+            break
+        }
+    }
 
 	var bitStream,decodedString strings.Builder
+	carry := ""
 
-	end := "\nEND OF HEADER\n"
-	t := 0
-    // Read the file byte by byte
-	for _,b := range contents{
-		if t<15 {
-			if end[t] == b{
-				t++
-			}else{
-				t = 0
-			}
-		}
-		if t>=15 {		
-			bitStream.WriteString(fmt.Sprintf("%08b",b))
-		}
-	}
+    // Now, read the rest of the file byte by byte
+    for {
+        b, err := reader.ReadByte()
+        if err != nil {
+            if err == io.EOF {
+                break // End of file
+            }
+            fmt.Println("Error reading byte:", err)
+            return
+        }
 
+		if len(carry)>0{
+			bitStream.WriteString(carry)
+			carry = ""
+		}
+
+		bitStream.WriteString(fmt.Sprintf("%08b",b))
+
+		if len(bitStream.String()) >= CHUNK_SIZE{
+			decodedString,carry = decodeChunk(bitStream, decoderMap)
+			fileIO.WriteToFile(decodedString.String(), outputFile)
+			bitStream.Reset()
+		}
+    }
+
+	bitStream.WriteString(carry)
+	decodedString,carry = decodeChunk(bitStream,decoderMap)
+	fileIO.WriteToFile(decodedString.String(), outputFile)
+}
+
+func decodeChunk (bitStream strings.Builder, decoderMap map[string]rune) (strings.Builder,string){
+	var decodedString strings.Builder
 	// PERFORM THE DECODE OPERATION
+	t := 0
 	for i:=0;i<len(bitStream.String());i++{
 		for j := i; j<len(bitStream.String());j++{
 			if val, exists := decoderMap[bitStream.String()[i:j]]; exists{
 				decodedString.WriteString(string(val))
 				i = j
+				t = j
 			}
 		}
 	}
-
-	fileIO.WriteToFile(decodedString.String(),outputFile)
+	return decodedString, bitStream.String()[t:]
 }
